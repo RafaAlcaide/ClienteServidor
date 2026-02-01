@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-21">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="lib" path="C:/Users/Lenovo/GRUPO STUDIUM/JAR FILE/commons-net-3.6.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Lenovo/GRUPO STUDIUM/JAR FILE/Generador.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Lenovo/GRUPO STUDIUM/JAR FILE/javax.activation-1.2.0.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Lenovo/GRUPO STUDIUM/JAR FILE/javax.mail.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Lenovo/GRUPO STUDIUM/JAR FILE/jlayer-1.0.1.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Lenovo/GRUPO STUDIUM/JAR FILE/Mayusculas.jar.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Lenovo/GRUPO STUDIUM/JAR FILE/mysql-connector-j-8.0.33-javadoc.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Lenovo/GRUPO STUDIUM/JAR FILE/sqlite-jdbc-3.49.1.0.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Lenovo/GRUPO STUDIUM/JAR FILE/TiendecitaRAV.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
