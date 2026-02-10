@@ -1,9 +1,8 @@
 package es.studium.practica3;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.FlowLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.DataInputStream;
@@ -20,64 +19,73 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 
 public class Cliente extends JFrame implements ActionListener {
 	private static final long serialVersionUID = 1L;
+
 	private Socket socket;
 	private DataInputStream entrada;
 	private DataOutputStream salida;
-	private JTextField txtNombre, txtApuesta;
-	private JTextArea textoChat;
-	private JButton btnEnviar, btnConectar;
-	private String nombreJugador;
+	private String nombre;
+	private boolean conectado = true;
+
+	// Componentes de la interfaz
+	private JTextArea areaChat;
+	private JTextField campoMensaje;
+	private JTextField campoNombre;
+	private JButton btnEnviar, btnConectar, btnSalir;
+	private JLabel estado;
 
 	public Cliente() {
-		super("Adivina el número secreto");
+		super("Cliente - Adivina el Número");
+		setLayout(new BorderLayout());
 
-		setLayout(new GridBagLayout());
-		GridBagConstraints gbc = new GridBagConstraints();
-		gbc.insets = new Insets(5, 5, 5, 5);
-
-		JPanel panelSuperior = new JPanel(new FlowLayout(FlowLayout.CENTER));
+		// Panel superior - Conexión
+		JPanel panelSuperior = new JPanel(new FlowLayout());
 		panelSuperior.add(new JLabel("Nombre:"));
-		txtNombre = new JTextField(10);
-		panelSuperior.add(txtNombre);
+		campoNombre = new JTextField(10);
+		panelSuperior.add(campoNombre);
+
 		btnConectar = new JButton("Conectar");
-		btnConectar.addActionListener(e -> conectarServidor());
+		btnConectar.addActionListener(this);
 		panelSuperior.add(btnConectar);
-		gbc.gridx = 0;
-		gbc.gridy = 0;
-		gbc.gridwidth = 2;
-		add(panelSuperior, gbc);
 
-		textoChat = new JTextArea(15, 40);
-		textoChat.setEditable(false);
-		JScrollPane scrollPane = new JScrollPane(textoChat);
-		gbc.gridy = 1;
-		add(scrollPane, gbc);
+		estado = new JLabel("Desconectado");
+		panelSuperior.add(estado);
+		add(panelSuperior, BorderLayout.NORTH);
 
-		JPanel panelInferior = new JPanel(new FlowLayout(FlowLayout.CENTER));
-		panelInferior.add(new JLabel("Tu Apuesta:"));
-		txtApuesta = new JTextField(5);
-		panelInferior.add(txtApuesta);
-		btnEnviar = new JButton("Enviar");
+		// Área central - Mensajes
+		areaChat = new JTextArea();
+		areaChat.setEditable(false);
+		add(new JScrollPane(areaChat), BorderLayout.CENTER);
+
+		// Panel inferior - Apuestas
+		JPanel panelInferior = new JPanel(new FlowLayout());
+		panelInferior.add(new JLabel("Tu apuesta (1-100):"));
+		campoMensaje = new JTextField(5);
+		campoMensaje.setEnabled(false);
+		panelInferior.add(campoMensaje);
+
+		btnEnviar = new JButton("Enviar Apuesta");
 		btnEnviar.setEnabled(false);
 		btnEnviar.addActionListener(this);
 		panelInferior.add(btnEnviar);
-		gbc.gridy = 2;
-		add(panelInferior, gbc);
 
+		btnSalir = new JButton("Salir");
+		btnSalir.addActionListener(this);
+		panelInferior.add(btnSalir);
+		add(panelInferior, BorderLayout.SOUTH);
+
+		// Configuración de la ventana
 		setSize(500, 400);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setLocationRelativeTo(null);
 		setVisible(true);
 	}
 
-	private void conectarServidor() {
-		nombreJugador = txtNombre.getText().trim().toUpperCase();
-		if (nombreJugador.isEmpty()) {
-			JOptionPane.showMessageDialog(this, "Introduce un nombre.");
+	private void conectar() {
+		nombre = campoNombre.getText().trim();
+		if (nombre.isEmpty()) {
+			JOptionPane.showMessageDialog(this, "Introduce un nombre");
 			return;
 		}
 
@@ -85,71 +93,120 @@ public class Cliente extends JFrame implements ActionListener {
 			socket = new Socket("localhost", 6000);
 			entrada = new DataInputStream(socket.getInputStream());
 			salida = new DataOutputStream(socket.getOutputStream());
-			salida.writeUTF(nombreJugador);
 
-			btnEnviar.setEnabled(true);
+			// Enviar nombre al servidor
+			salida.writeUTF(nombre);
+
+			// Actualizar interfaz
+			estado.setText("Conectado como: " + nombre);
+			estado.setForeground(Color.GREEN);
 			btnConectar.setEnabled(false);
-			txtNombre.setEnabled(false);
+			campoNombre.setEnabled(false);
+			btnEnviar.setEnabled(true);
+			campoMensaje.setEnabled(true);
+			campoMensaje.requestFocus();
 
-			// HILO
-			Thread recibirMensajes = new Thread(() -> {
-				try {
-					while (true) {
-						String mensaje = entrada.readUTF();
-						textoChat.append(mensaje + "\n");
-
-						if (mensaje.toUpperCase().contains("FIN DEL JUEGO")) {
-							SwingUtilities.invokeLater(() -> {
-								btnEnviar.setEnabled(false);
-								txtApuesta.setEnabled(false);
-								JOptionPane.showMessageDialog(Cliente.this, "El juego ha finalizado.");
-							});
-							break;
-						}
-					}
-				} catch (IOException e) {
-					if (!socket.isClosed()) {
-						textoChat.append("Desconectado del servidor.\n");
-					}
+			// Iniciar hilo de recepción
+			Thread hiloReceptor = new Thread(new Runnable() {
+				@Override
+				public void run() {
+					recibirMensajes();
 				}
 			});
-			recibirMensajes.start();
+			hiloReceptor.start();
 
 		} catch (IOException e) {
-			JOptionPane.showMessageDialog(this, "No se pudo conectar con el servidor.");
+			JOptionPane.showMessageDialog(this, "Error conectando al servidor");
 		}
 	}
 
-	// BOTÓN ENVIAR
-	@Override
-	public void actionPerformed(ActionEvent e) {
-		if (e.getSource() == btnEnviar) {
-			String apuestaStr = txtApuesta.getText().trim();
-			if (apuestaStr.isEmpty()) {
-				JOptionPane.showMessageDialog(this, "Debes introducir un número antes de enviar.");
+	// MÉTODO PRINCIPAL DE RECEPCIÓN
+	private void recibirMensajes() {
+		try {
+			while (conectado) {
+				String mensaje = entrada.readUTF();
+
+				// Actualizar en el hilo de Swing
+				SwingUtilities.invokeLater(new Runnable() {
+					@Override
+					public void run() {
+						areaChat.append(mensaje + "\n");
+
+						// Deshabilitar si el juego terminó
+						if (mensaje.contains("HA ACERTADO") || mensaje.equals("FIN_JUEGO")) {
+							btnEnviar.setEnabled(false);
+							campoMensaje.setEnabled(false);
+							areaChat.append("--- JUEGO TERMINADO ---\n");
+						}
+
+						// Si es nuevo juego, habilitar
+						if (mensaje.equals("NUEVO_JUEGO")) {
+							btnEnviar.setEnabled(true);
+							campoMensaje.setEnabled(true);
+							campoMensaje.requestFocus();
+						}
+					}
+				});
+			}
+		} catch (IOException e) {
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					areaChat.append("--- DESCONECTADO DEL SERVIDOR ---\n");
+					estado.setText("Desconectado");
+					estado.setForeground(Color.RED);
+				}
+			});
+		}
+	}
+
+	private void enviarApuesta() {
+		String texto = campoMensaje.getText().trim();
+		try {
+			int apuesta = Integer.parseInt(texto);
+			if (apuesta < 1 || apuesta > 100) {
+				JOptionPane.showMessageDialog(this, "El número debe estar entre 1 y 100");
 				return;
 			}
-			try {
-				int apuesta = Integer.parseInt(apuestaStr);
-				if (apuesta < 1 || apuesta > 100) {
-					JOptionPane.showMessageDialog(this, "Introduce un número entre 1 y 100.");
-					return;
-				}
-				salida.writeUTF(nombreJugador + ": " + apuesta);
-				txtApuesta.setText("");
 
-				// Suspensión de 3 segundos
-				btnEnviar.setEnabled(false);
-				Timer timer = new Timer(3000, evt -> btnEnviar.setEnabled(true)); // Temporizador
-				timer.setRepeats(false);
-				timer.start();
+			salida.writeUTF("APUESTA:" + apuesta);
+			campoMensaje.setText("");
+			campoMensaje.requestFocus();
 
-			} catch (NumberFormatException | IOException ex) {
-				JOptionPane.showMessageDialog(this, "Error al enviar la apuesta.");
-			}
+		} catch (NumberFormatException e) {
+			JOptionPane.showMessageDialog(this, "Introduce un número válido");
+		} catch (IOException e) {
+			areaChat.append("Error enviando apuesta\n");
 		}
 	}
+
+	private void desconectar() {
+		conectado = false;
+		try {
+			if (salida != null) {
+				salida.writeUTF("DESCONECTAR");
+			}
+			if (socket != null && !socket.isClosed()) {
+				socket.close();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		System.exit(0);
+	}
+
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		if (e.getSource() == btnConectar) {
+			conectar();
+		} else if (e.getSource() == btnEnviar) {
+			enviarApuesta();
+		} else if (e.getSource() == btnSalir) {
+			desconectar();
+		}
+	}
+
 	public static void main(String[] args) {
-		SwingUtilities.invokeLater(Cliente::new);
+		new Cliente();
 	}
 }
